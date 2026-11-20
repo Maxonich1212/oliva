@@ -1,19 +1,56 @@
 import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import { Minus, Plus, Check } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore, hideToast } from '../lib/store'
 
-// Нижняя шторка: свайп вниз закрывает
-export function Sheet({ open, onClose, children, title, right }) {
+// Видимая часть экрана с учётом клавиатуры (iOS сдвигает страницу, а не сжимает её)
+function useKeyboard(active) {
+  const [vv, setVv] = useState({ h: typeof window !== 'undefined' ? window.innerHeight : 800, kb: 0 })
+  useEffect(() => {
+    if (!active || !window.visualViewport) return
+    const v = window.visualViewport
+    const upd = () => setVv({ h: v.height, kb: Math.max(0, window.innerHeight - v.height - v.offsetTop) })
+    upd()
+    v.addEventListener('resize', upd)
+    v.addEventListener('scroll', upd)
+    return () => {
+      v.removeEventListener('resize', upd)
+      v.removeEventListener('scroll', upd)
+    }
+  }, [active])
+  return vv
+}
+
+let locks = 0
+let savedY = 0
+// Блокируем прокрутку страницы под шторкой (на iOS иначе страница «уезжает» при фокусе на поле)
+function lockScroll() {
+  if (locks++ > 0) return
+  savedY = window.scrollY
+  const b = document.body.style
+  b.position = 'fixed'
+  b.top = `-${savedY}px`
+  b.left = '0'
+  b.right = '0'
+  b.overflow = 'hidden'
+}
+function unlockScroll() {
+  if (--locks > 0) return
+  const b = document.body.style
+  b.position = b.top = b.left = b.right = b.overflow = ''
+  window.scrollTo(0, savedY)
+}
+
+// Нижняя шторка: свайп вниз закрывает. tall — фиксированная высота (для списков с поиском)
+export function Sheet({ open, onClose, children, title, right, tall }) {
   const drag = useDragControls()
+  const { h, kb } = useKeyboard(open)
   useEffect(() => {
     if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
+    lockScroll()
+    return unlockScroll
   }, [open])
+  const maxH = Math.max(240, h - 10)
   return (
     <AnimatePresence>
       {open && (
@@ -21,6 +58,7 @@ export function Sheet({ open, onClose, children, title, right }) {
           <motion.div className="backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
           <motion.div
             className="sheet"
+            style={{ bottom: kb, maxHeight: maxH, height: tall ? Math.min(maxH, window.innerHeight * 0.9) : undefined }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}

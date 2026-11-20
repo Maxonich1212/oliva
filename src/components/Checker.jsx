@@ -16,15 +16,17 @@ export function CheckerSheet({ open, onClose }) {
   const n = q.trim().toLowerCase().replace(/ё/g, 'е')
   const list = FODMAP.filter((f) => (cat === 'Все' || f.cat === cat) && (!n || f.name.toLowerCase().replace(/ё/g, 'е').includes(n)))
   return (
-    <Sheet open={open} onClose={onClose} title="Можно ли?">
-      <div className="row" style={{ position: 'relative', marginBottom: 12 }}>
-        <Search size={17} style={{ position: 'absolute', left: 14, color: 'var(--muted)' }} />
-        <input className="input" style={{ paddingLeft: 40 }} placeholder="Например, авокадо или кешью" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
-      <div className="chips" style={{ marginBottom: 12 }}>
-        {CATS.map((c) => (
-          <button key={c} className={'chip' + (cat === c ? ' on' : '')} onClick={() => setCat(c)}>{c}</button>
-        ))}
+    <Sheet open={open} onClose={onClose} title="Можно ли?" tall>
+      <div className="sheet-search">
+        <div className="row" style={{ position: 'relative', marginBottom: 10 }}>
+          <Search size={17} style={{ position: 'absolute', left: 14, color: 'var(--muted)' }} />
+          <input className="input" type="search" enterKeyHint="search" style={{ paddingLeft: 40 }} placeholder="Например, авокадо или кешью" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <div className="chips">
+          {CATS.map((c) => (
+            <button key={c} className={'chip' + (cat === c ? ' on' : '')} onClick={() => setCat(c)}>{c}</button>
+          ))}
+        </div>
       </div>
       <div className="list">
         {list.map((f) => (

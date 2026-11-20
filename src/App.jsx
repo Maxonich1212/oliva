@@ -122,17 +122,12 @@ export default function App() {
   if (!user && !offline) return <Auth />
   if (!settings().onboarded) return <Welcome onDone={(goPantry) => { saveSettings({ onboarded: true }); if (goPantry) setTab('pantry') }} />
 
-  const openDay = (k) => {
-    setDay(k)
-    setTab('today')
-  }
-
   return (
     <div className="app">
       <AnimatePresence mode="wait" initial={false}>
-        <motion.main key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+        <motion.main key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
           {tab === 'today' && <Today day={day} setDay={setDay} openSettings={() => setSetOpen(true)} goShop={() => setTab('shop')} />}
-          {tab === 'plan' && <Plan openDay={openDay} />}
+          {tab === 'plan' && <Plan />}
           {tab === 'shop' && <Shop />}
           {tab === 'pantry' && <Pantry />}
           {tab === 'progress' && <Progress />}

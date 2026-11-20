@@ -6,7 +6,7 @@ import { settings, dayMeals, dayTotals, dayIndex, fmtDay, weekday, addDays, toda
 import { PLAN_DAYS } from '../data/menu'
 import { SLOT_NAME } from '../data/recipes'
 import { MealSheet, markEaten } from '../components/MealSheet'
-import { Macro } from '../components/ui'
+import { Macro, Sheet } from '../components/ui'
 import { feelId, FEELS } from '../components/FeelPrompt'
 import { PrepSheet, usePrep } from '../components/PrepSheet'
 
@@ -128,6 +128,40 @@ export default function Today({ day, setDay, openSettings, goShop }) {
       <MealSheet sel={sel} onClose={() => setSel(null)} />
       <PrepSheet open={prepOpen} onClose={() => setPrepOpen(false)} />
     </div>
+  )
+}
+
+// День из «Меню»: открывается шторкой поверх меню, без перехода на вкладку «Сегодня»
+export function DaySheet({ day, onClose }) {
+  const [sel, setSel] = useState(null)
+  useStore((s) => s.records)
+  const meals = day ? dayMeals(day) : null
+  const plan = dayTotals(meals)
+  const eaten = dayTotals(meals, true)
+  const n = day ? dayIndex(day) : null
+  return (
+    <>
+      <Sheet open={!!day} onClose={onClose} title={day ? `${cap(weekday(day))}, ${fmtDay(day)}` : ''}>
+        {day && meals && (
+          <div className="stack" style={{ gap: 10 }}>
+            <div className="eyebrow" style={{ marginTop: -6 }}>День {(n % PLAN_DAYS) + 1} из {PLAN_DAYS} · неделя {Math.floor((n % PLAN_DAYS) / 7) + 1}</div>
+            <div className="card row between" style={{ padding: 14 }}>
+              <div>
+                <div className="num" style={{ fontFamily: 'var(--serif)', fontSize: 26, fontWeight: 600, lineHeight: 1.1 }}>
+                  {Math.round(plan.k)} <span className="small muted" style={{ fontFamily: 'var(--sans)' }}>ккал</span>
+                </div>
+                <div className="tiny muted" style={{ marginTop: 4 }}>Б {Math.round(plan.p)} · Ж {Math.round(plan.f)} · У {Math.round(plan.c)}</div>
+              </div>
+              {eaten.k > 0 && <div className="small muted num" style={{ textAlign: 'right' }}>съедено<div style={{ fontWeight: 800, color: 'var(--ink)' }}>{Math.round(eaten.k)}</div></div>}
+            </div>
+            {meals.map((m) => (
+              <MealCard key={m.slot} m={m} onOpen={() => setSel({ k: m.k, slot: m.slot })} />
+            ))}
+          </div>
+        )}
+      </Sheet>
+      <MealSheet sel={sel} onClose={() => setSel(null)} />
+    </>
   )
 }
 

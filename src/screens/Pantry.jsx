@@ -134,11 +134,14 @@ function AddSheet({ open, onClose, onPick }) {
   const [q, setQ] = useState('')
   const list = INGREDIENTS.filter((i) => !i.staple && i.name.toLowerCase().includes(q.toLowerCase()))
   return (
-    <Sheet open={open} onClose={onClose} title="Добавить в запасы">
-      <div className="row" style={{ position: 'relative', marginBottom: 12 }}>
-        <Search size={17} style={{ position: 'absolute', left: 14, color: 'var(--muted)' }} />
-        <input className="input" style={{ paddingLeft: 40 }} placeholder="Найти продукт" value={q} onChange={(e) => setQ(e.target.value)} />
+    <Sheet open={open} onClose={onClose} title="Добавить в запасы" tall>
+      <div className="sheet-search">
+        <div className="row" style={{ position: 'relative' }}>
+          <Search size={17} style={{ position: 'absolute', left: 14, color: 'var(--muted)' }} />
+          <input className="input" type="search" enterKeyHint="search" style={{ paddingLeft: 40 }} placeholder="Найти продукт" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
       </div>
+      {!list.length && <div className="empty small">Нет такого продукта в справочнике</div>}
       <div className="list">
         {list.map((i) => (
           <button key={i.id} className="li" onClick={() => onPick(i.id)}>

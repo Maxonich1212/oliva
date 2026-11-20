@@ -10,13 +10,15 @@ import { RECIPES, SLOTS } from '../data/recipes'
 import { ING } from '../data/ingredients'
 import { Sheet, Macro } from '../components/ui'
 import { Reintro, Principles } from './Guide'
+import { DaySheet } from './Today'
 
-export default function Plan({ openDay }) {
+export default function Plan() {
   useStore((s) => s.records)
   const st = settings()
   const today = todayKey()
   const [lib, setLib] = useState(false)
   const [guide, setGuide] = useState(null)
+  const [openK, setOpenK] = useState(null)
   const prep = usePrep()
   const n0 = dayIndex(today, st)
   const cycleStart = n0 != null ? addDays(st.startDate, Math.floor(n0 / PLAN_DAYS) * PLAN_DAYS) : st.startDate
@@ -82,7 +84,7 @@ export default function Plan({ openDay }) {
               whileTap={{ scale: 0.985 }}
               className="card"
               style={{ textAlign: 'left', padding: 14, boxShadow: isToday ? 'var(--shadow), inset 0 0 0 2px var(--olive)' : undefined }}
-              onClick={() => openDay(k)}
+              onClick={() => setOpenK(k)}
             >
               <div className="row between">
                 <div className="row" style={{ gap: 8 }}>
@@ -117,6 +119,7 @@ export default function Plan({ openDay }) {
       </motion.button>
 
       <RecipeLibrary open={lib} onClose={() => setLib(false)} />
+      <DaySheet day={openK} onClose={() => setOpenK(null)} />
       <CheckerSheet open={guide === 'c'} onClose={() => setGuide(null)} />
       <PrepSheet open={guide === 'prep'} onClose={() => setGuide(null)} />
       <Sheet open={guide === 'r'} onClose={() => setGuide(null)} title="Второй этап">
@@ -136,16 +139,19 @@ export function RecipeLibrary({ open, onClose }) {
   const list = RECIPES.filter((r) => (slot === 'all' ? true : slot === 'base' ? r.base : r.slot.includes(slot)) && r.name.toLowerCase().includes(q.toLowerCase()))
   return (
     <>
-      <Sheet open={open && !cur} onClose={onClose} title="Рецепты">
-        <div className="row" style={{ position: 'relative', marginBottom: 12 }}>
-          <Search size={17} style={{ position: 'absolute', left: 14, color: 'var(--muted)' }} />
-          <input className="input" style={{ paddingLeft: 40 }} placeholder="Найти блюдо" value={q} onChange={(e) => setQ(e.target.value)} />
+      <Sheet open={open && !cur} onClose={onClose} title="Рецепты" tall>
+        <div className="sheet-search">
+          <div className="row" style={{ position: 'relative', marginBottom: 10 }}>
+            <Search size={17} style={{ position: 'absolute', left: 14, color: 'var(--muted)' }} />
+            <input className="input" type="search" enterKeyHint="search" style={{ paddingLeft: 40 }} placeholder="Найти блюдо" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div className="chips">
+            {[['all', 'Все'], ...SLOTS.map(([k, n]) => [k, n]), ['base', 'Основы']].map(([k, n]) => (
+              <button key={k} className={'chip' + (slot === k ? ' on' : '')} onClick={() => setSlot(k)}>{n}</button>
+            ))}
+          </div>
         </div>
-        <div className="chips" style={{ marginBottom: 12 }}>
-          {[['all', 'Все'], ...SLOTS.map(([k, n]) => [k, n]), ['base', 'Основы']].map(([k, n]) => (
-            <button key={k} className={'chip' + (slot === k ? ' on' : '')} onClick={() => setSlot(k)}>{n}</button>
-          ))}
-        </div>
+        {!list.length && <div className="empty small">Ничего не нашлось</div>}
         <div className="list">
           {list.map((r) => {
             const nut = nutrition(baseAmounts(r.id))

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Share2, ChevronDown, RotateCcw, ShoppingBag, X, ReceiptText, CircleHelp } from 'lucide-react'
 import { CheckerSheet } from '../components/Checker'
 import { NoProductSheet } from '../components/NoProduct'
+import { ShareSheet } from '../components/ShareSheet'
 import { StoreInfo } from '../components/StoreInfo'
 import { ReceiptSheet } from '../components/ReceiptSheet'
 import { useStore, get, put, remove, byKind, toast } from '../lib/store'
@@ -42,6 +43,7 @@ export default function Shop() {
   const [extra, setExtra] = useState('')
   const [rcpt, setRcpt] = useState(false)
   const [chk, setChk] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [noId, setNoId] = useState(null)
   const from = diffDays(st.startDate, today) > 0 ? st.startDate : today
   const to = addDays(from, span)
@@ -72,25 +74,11 @@ export default function Shop() {
     put(logId, 'bought', nl)
   }
 
-  const share = async () => {
-    const lines = [`Покупки на ${fmtDay(from)}${span ? ` – ${fmtDay(to)}` : ''}:`]
-    for (const [, name, , list] of groups) {
-      lines.push('', name + ':')
-      for (const i of list) lines.push(`• ${ING[i.id].name} — ${fmtQty(i.id, suggestBuy(i.id, i.buy))}`)
-    }
-    if (missingStaples.length) lines.push('', 'Ещё:', ...missingStaples.map((s) => `• ${ING[s.id].name}`))
-    const ex = extras.filter((x) => !x.data.done)
-    if (ex.length) lines.push(...ex.map((x) => `• ${x.data.name}`))
-    const text = lines.join('\n')
-    try {
-      if (navigator.share) await navigator.share({ text })
-      else {
-        await navigator.clipboard.writeText(text)
-        toast('Список скопирован')
-      }
-    } catch {
-      /* отменили */
-    }
+  const shareDoc = () => {
+    const sections = groups.map(([, name, e, list]) => ({ name, emoji: e, items: list.map((i) => ({ name: ING[i.id].name, qty: fmtQty(i.id, suggestBuy(i.id, i.buy)) })) }))
+    const more = [...missingStaples.map((x) => ({ name: ING[x.id].name, qty: '' })), ...extras.filter((x) => !x.data.done).map((x) => ({ name: x.data.name, qty: '' }))]
+    if (more.length) sections.push({ name: 'Ещё', emoji: '✏️', items: more })
+    return { title: 'Список покупок', subtitle: `${fmtDay(from)}${span ? ` – ${fmtDay(to)}` : ''}`, sections }
   }
 
   return (
@@ -104,7 +92,7 @@ export default function Shop() {
           <button className="icon-btn" onClick={() => setRcpt(true)} aria-label="Добавить из чека">
             <ReceiptText size={18} />
           </button>
-          <button className="icon-btn" onClick={share} aria-label="Поделиться списком">
+          <button className="icon-btn" onClick={() => setShareOpen(true)} aria-label="Поделиться списком">
             <Share2 size={18} />
           </button>
         </div>
@@ -275,6 +263,7 @@ export default function Shop() {
 
       <ReceiptSheet open={rcpt} onClose={() => setRcpt(false)} />
       <CheckerSheet open={chk} onClose={() => setChk(false)} />
+      <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} doc={shareOpen ? shareDoc() : null} />
       <BuySheet item={buy} onClose={() => setBuy(null)} onBuy={(q) => { markBought(buy.id, q); setBuy(null) }} onNo={() => { const id = buy.id; setBuy(null); setTimeout(() => setNoId(id), 250) }} />
       <NoProductSheet id={noId} onClose={() => setNoId(null)} />
     </div>
