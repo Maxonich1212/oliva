@@ -3,8 +3,7 @@
 // Каждую минуту pg_cron отправляет созревшие напоминания через edge-функцию `push`.
 // После любой отметки очередь пересчитывается — поэтому напоминание о еде, которую уже отметила, не придёт.
 import { sb } from './supabase'
-import { getState } from './store'
-import { get } from './store'
+import { getState, get, put } from './store'
 import { settings, saveSettings, todayKey, addDays, dayMeals, prepFor, isWeekend, parseKey, shoppingNeed, fmtDay } from './plan'
 import { prepMonday, prepTasks } from './prep'
 import { SLOT_NAME } from '../data/recipes'
@@ -43,17 +42,38 @@ const b64 = (s) => {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0))
 }
 
+// Каждый шаг подписки подписан: если что-то сломается, будет видно где. Ошибка ещё и сохраняется в базу (debug:push).
+const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${what}: нет ответа ${ms / 1000} с`)), ms))])
+
 export async function enablePush() {
-  const perm = await Notification.requestPermission()
-  if (perm !== 'granted') throw new Error('Уведомления запрещены в настройках телефона')
-  const reg = await navigator.serviceWorker.ready
-  let sub = await reg.pushManager.getSubscription()
-  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(VAPID_PUBLIC) })
-  const j = sub.toJSON()
-  const { error } = await sb.from('push_subs').upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: navigator.userAgent.slice(0, 200) }, { onConflict: 'endpoint' })
-  if (error) throw error
-  saveSettings({ pushOn: true })
-  await syncQueue(true)
+  let stage = 'разрешение'
+  const info = { ua: navigator.userAgent.slice(0, 160), standalone: standalone(), at: new Date().toISOString() }
+  try {
+    if (!getState().user) throw new Error('нужно войти в аккаунт')
+    const perm = await Notification.requestPermission()
+    info.permission = perm
+    if (perm !== 'granted') throw new Error(perm === 'denied' ? 'уведомления запрещены в настройках телефона' : 'разрешение не выдано')
+    stage = 'сервис-воркер'
+    let reg = await navigator.serviceWorker.getRegistration()
+    if (!reg) reg = await navigator.serviceWorker.register('./sw.js')
+    reg = await withTimeout(navigator.serviceWorker.ready, 10000, 'сервис-воркер')
+    stage = 'подписка'
+    let sub = await reg.pushManager.getSubscription()
+    if (!sub) sub = await withTimeout(reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(VAPID_PUBLIC) }), 15000, 'подписка')
+    const j = sub.toJSON()
+    info.endpoint = (j.endpoint || '').slice(0, 60)
+    stage = 'сохранение'
+    const { error } = await sb.from('push_subs').upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: navigator.userAgent.slice(0, 200) }, { onConflict: 'endpoint' })
+    if (error) throw error
+    saveSettings({ pushOn: true })
+    stage = 'очередь'
+    await syncQueue(true)
+    put('debug:push', 'debug', { ...info, ok: true })
+  } catch (e) {
+    const msg = `Шаг «${stage}»: ${e.message || e}`
+    put('debug:push', 'debug', { ...info, ok: false, error: msg })
+    throw new Error(msg)
+  }
 }
 
 export async function disablePush() {
@@ -73,7 +93,7 @@ export async function disablePush() {
 
 export async function testPush() {
   const { error } = await sb.from('push_queue').insert({ id: 'test-' + Date.now(), at: new Date().toISOString(), title: '🌿 Олива', body: 'Уведомления работают!', url: './', tag: 'test' })
-  if (error) throw error
+  if (error) throw new Error('Не удалось поставить тест в очередь: ' + error.message)
 }
 
 // ───── расчёт напоминаний ─────

@@ -203,7 +203,7 @@ function PushGroup({ user, st }) {
           )}
         </>
       )}
-      {msg && <div className="tiny" style={{ color: 'var(--ink2)' }}>{msg}</div>}
+      {msg && <div className="small" style={{ color: msg.startsWith('Шаг') || msg.startsWith('Не удалось') ? 'var(--terra)' : 'var(--olive)', fontWeight: 600 }}>{msg}</div>}
     </Group>
   )
 }
