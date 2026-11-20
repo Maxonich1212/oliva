@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sun, CalendarDays, ShoppingBasket, Refrigerator, TrendingUp } from 'lucide-react'
 import { useStore } from './lib/store'
-import { todayKey, settings, saveSettings } from './lib/plan'
+import { todayKey, settings, saveSettings, shoppingNeed, addDays, diffDays } from './lib/plan'
 import Today from './screens/Today'
 import Plan from './screens/Plan'
 import Shop from './screens/Shop'
@@ -42,6 +42,19 @@ export default function App() {
   const [day, setDay] = useState(todayKey())
   const [setOpen, setSetOpen] = useState(false)
   const [theme, setThemeS] = useState(readTheme)
+  const shopCount = useMemo(() => {
+    if (!ready) return 0
+    const st = settings()
+    const today = todayKey()
+    const from = diffDays(st.startDate, today) > 0 ? st.startDate : today
+    let span = 2
+    try {
+      span = JSON.parse(localStorage.getItem('oliva:span')) ?? 2
+    } catch {
+      /* по умолчанию 3 дня */
+    }
+    return shoppingNeed(from, addDays(from, span), st).items.filter((i) => i.buy > 0.01).length
+  }, [records, ready, tab])
 
   useEffect(() => {
     const el = document.documentElement
@@ -126,21 +139,53 @@ export default function App() {
         </motion.main>
       </AnimatePresence>
 
+      <div className="tabbar-fade" />
       <nav className="tabbar">
-        {TABS.map(([id, label, Icon]) => (
-          <button
-            key={id}
-            className={'tab' + (tab === id ? ' on' : '')}
-            onClick={() => {
-              if (id === 'today' && tab === 'today') setDay(todayKey())
-              setTab(id)
-            }}
-          >
-            {tab === id && <motion.span layoutId="tabpill" className="pill" transition={{ type: 'spring', damping: 30, stiffness: 380 }} />}
-            <Icon size={21} strokeWidth={tab === id ? 2.3 : 1.9} />
-            {label}
-          </button>
-        ))}
+        {TABS.map(([id, label, Icon]) => {
+          const on = tab === id
+          return (
+            <motion.button
+              key={id}
+              className={'tab' + (on ? ' on' : '')}
+              whileTap={{ scale: 0.9 }}
+              aria-label={label}
+              onClick={() => {
+                if (id === 'today' && tab === 'today') setDay(todayKey())
+                navigator.vibrate?.(8)
+                setTab(id)
+              }}
+            >
+              {on && <motion.span layoutId="tabpill" className="pill" transition={{ type: 'spring', damping: 26, stiffness: 320 }} />}
+              <motion.span
+                key={on ? 'on' : 'off'}
+                initial={on ? { scale: 0.6, rotate: -12 } : false}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', damping: 12, stiffness: 400 }}
+                style={{ display: 'grid' }}
+              >
+                <Icon size={22} strokeWidth={on ? 2.4 : 2} />
+              </motion.span>
+              <AnimatePresence initial={false}>
+                {on && (
+                  <motion.span
+                    className="label"
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {id === 'shop' && !on && shopCount > 0 && (
+                <motion.span className="badge" initial={{ scale: 0 }} animate={{ scale: 1 }} key={shopCount}>
+                  {shopCount > 99 ? '99+' : shopCount}
+                </motion.span>
+              )}
+            </motion.button>
+          )
+        })}
       </nav>
       <SettingsSheet open={setOpen} onClose={() => setSetOpen(false)} theme={theme} setTheme={setThemeS} />
       <FeelPrompt />
