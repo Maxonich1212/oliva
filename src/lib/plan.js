@@ -161,7 +161,7 @@ export function meal(k, slot, st = settings()) {
   return {
     k, slot, n, time: times[slot], recipeId, recipe, ready, amounts, nut, portions,
     leftover, leftoverFrom, swapped: !!rec.recipe, planned: plan[slot],
-    status: rec.status || null, custom: !!rec.amounts, rec,
+    status: rec.status || null, custom: !!rec.amounts && !rec.subs, subs: rec.subs || (leftover ? mealRec(leftoverFrom, 'd').subs : null) || null, rec,
   }
 }
 
@@ -234,7 +234,7 @@ export function setStatus(m, status) {
 
 export function swapMeal(m, recipeId) {
   const prev = m.rec
-  const data = { ...prev, recipe: recipeId === m.planned && !m.leftover ? undefined : recipeId, amounts: undefined }
+  const data = { ...prev, recipe: recipeId === m.planned && !m.leftover ? undefined : recipeId, amounts: undefined, subs: undefined }
   put(mealId(m.k, m.slot), 'meal', data)
 }
 // Заменить блюдо во всех днях плана (не нравится / нет продукта)
@@ -264,7 +264,7 @@ export function missingFor(rid, mult = 1) {
 export function setAmounts(m, amounts) {
   const base = m.recipe ? baseAmounts(m.recipeId) : {}
   const same = Object.keys(base).every((id) => Math.abs((amounts[id] ?? 0) - base[id]) < 1e-6)
-  put(mealId(m.k, m.slot), 'meal', { ...m.rec, amounts: same ? undefined : amounts })
+  put(mealId(m.k, m.slot), 'meal', { ...m.rec, amounts: same ? undefined : amounts, subs: same ? undefined : m.rec.subs })
 }
 
 // ───── список покупок ─────
@@ -346,4 +346,87 @@ export function prepFor(k, st = settings()) {
     if (m.recipe?.prep && !m.leftover && m.status !== 'skipped') out.push({ text: m.recipe.prep, m })
   }
   return out
+}
+
+// ───── «Нет продукта» ─────
+// Чем можно заменить продукт внутри рецепта (те же граммы)
+export const SUBS = {
+  cod: ['pollock', 'haddock', 'hake'],
+  pollock: ['cod', 'haddock', 'hake'],
+  haddock: ['cod', 'pollock', 'hake'],
+  hake: ['cod', 'pollock', 'haddock'],
+  trout: ['hake', 'cod'],
+  chicken: ['turkey'],
+  turkey: ['chicken'],
+  turkey_mince: [],
+  beef: ['turkey', 'chicken'],
+  shrimp: ['chicken', 'cod'],
+  rice: ['quinoa', 'buckwheat'],
+  quinoa: ['rice', 'buckwheat'],
+  buckwheat: ['quinoa', 'rice'],
+  rice_noodles: ['rice'],
+  green_beans: ['broccoli', 'zucchini'],
+  broccoli: ['green_beans', 'zucchini'],
+  zucchini: ['eggplant', 'cucumber'],
+  eggplant: ['zucchini'],
+  bokchoy: ['spinach'],
+  spinach: ['bokchoy'],
+  bell_pepper: ['carrot'],
+  strawberry: ['blueberry', 'kiwi'],
+  blueberry: ['strawberry'],
+  kiwi: ['mandarin', 'strawberry'],
+  mandarin: ['kiwi'],
+  walnut: ['pumpkin_seed', 'almond'],
+  almond: ['walnut', 'pumpkin_seed'],
+  pumpkin_seed: ['walnut'],
+  kefir: ['yogurt'],
+  yogurt: ['kefir'],
+  tvorog: ['yogurt'],
+  cheese: [],
+  rice_cake: [],
+  tomato: ['cucumber'],
+  tomato_can: [],
+  potato: ['rice'],
+}
+
+// Блюда на ближайшие дни, где нужен продукт (остатки ужина не считаем — они следуют за ужином)
+export function affectedBy(ingId, from = todayKey(), days = 7, st = settings()) {
+  const out = []
+  for (let i = 0; i < days; i++) {
+    const k = addDays(from, i)
+    for (const m of dayMeals(k, st) || []) {
+      if (m.status === 'eaten' || m.status === 'skipped' || m.leftover || !m.recipe) continue
+      if (m.amounts[ingId] > 0) out.push(m)
+    }
+  }
+  return out
+}
+
+// Лучшая замена блюда без этого продукта: меньше всего докупать, ближе по калориям
+export function suggestDish(m, ingId) {
+  let best = null
+  for (const r of Object.values(REC)) {
+    if (!r.slot.includes(m.slot) || r.id === m.recipeId) continue
+    if ((r.ing || []).some(([id, q]) => id === ingId && q > 0)) continue
+    // ужин на 2 порции меняем только на такой же «двухдневный», чтобы обед завтра не пропал
+    if (m.slot === 'd' && m.portions === 2 && !r.batch) continue
+    const miss = missingFor(r.id, m.slot === 'd' ? m.portions : 1)
+    const score =
+      miss * 250 +
+      Math.abs(nutrition(baseAmounts(r.id)).k - m.nut.k) +
+      (m.slot === 'l' && !isWeekend(m.k) && !r.togo ? 600 : 0) +
+      (m.slot === 'l' && r.time > 30 ? 400 : 0) +
+      ((r.active || r.time) > 40 ? 300 : 0)
+    if (!best || score < best.score) best = { id: r.id, miss, score }
+  }
+  return best
+}
+
+// Заменить продукт внутри блюда на другой (те же граммы)
+export function subIngredient(m, from, to) {
+  const am = { ...m.amounts }
+  const q = am[from] || 0
+  am[from] = 0
+  am[to] = (am[to] || 0) + (ING[to].unit === 'pc' && ING[from].unit !== 'pc' ? Math.max(1, Math.round(grams(from, q) / ING[to].pw)) : ING[from].unit === 'pc' && ING[to].unit !== 'pc' ? grams(from, q) : q)
+  put(mealId(m.k, m.slot), 'meal', { ...m.rec, amounts: am, subs: { ...(m.rec.subs || {}), [from]: to } })
 }

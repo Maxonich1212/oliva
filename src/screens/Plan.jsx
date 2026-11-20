@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { BookOpen, Sprout, Leaf, ChevronRight, Search, CircleHelp } from 'lucide-react'
 import { CheckerSheet } from '../components/Checker'
+import { PrepSheet, usePrep } from '../components/PrepSheet'
 import { useStore } from '../lib/store'
 import { settings, dayMeals, addDays, fmtDay, weekdayShort, todayKey, dayTotals, nutrition, baseAmounts, fmtQty, dayIndex } from '../lib/plan'
 import { PLAN_DAYS } from '../data/menu'
@@ -16,6 +17,7 @@ export default function Plan({ openDay }) {
   const today = todayKey()
   const [lib, setLib] = useState(false)
   const [guide, setGuide] = useState(null)
+  const prep = usePrep()
   const n0 = dayIndex(today, st)
   const cycleStart = n0 != null ? addDays(st.startDate, Math.floor(n0 / PLAN_DAYS) * PLAN_DAYS) : st.startDate
   const [week, setWeek] = useState(n0 != null ? Math.floor((n0 % PLAN_DAYS) / 7) : 0)
@@ -42,6 +44,14 @@ export default function Plan({ openDay }) {
         </motion.button>
       </div>
 
+      <motion.button whileTap={{ scale: 0.98 }} className="card row" style={{ marginTop: 10, gap: 12, width: '100%', textAlign: 'left', padding: 14 }} onClick={() => setGuide('prep')}>
+        <span style={{ fontSize: 20 }}>🧺</span>
+        <div className="grow">
+          <div className="h3">Заготовки на неделю</div>
+          <div className="tiny muted">{prep.left.length ? `${prep.left.length} задач · ≈ ${prep.minutes} мин в выходные` : 'всё заготовлено'}</div>
+        </div>
+        <ChevronRight size={18} className="muted" />
+      </motion.button>
       <motion.button whileTap={{ scale: 0.98 }} className="card row" style={{ marginTop: 10, gap: 12, width: '100%', textAlign: 'left', padding: 14 }} onClick={() => setGuide('c')}>
         <CircleHelp size={20} color="var(--euca)" />
         <div className="grow">
@@ -108,6 +118,7 @@ export default function Plan({ openDay }) {
 
       <RecipeLibrary open={lib} onClose={() => setLib(false)} />
       <CheckerSheet open={guide === 'c'} onClose={() => setGuide(null)} />
+      <PrepSheet open={guide === 'prep'} onClose={() => setGuide(null)} />
       <Sheet open={guide === 'r'} onClose={() => setGuide(null)} title="Второй этап">
         <Reintro />
       </Sheet>

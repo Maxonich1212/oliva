@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Share2, ChevronDown, RotateCcw, ShoppingBag, X, ReceiptText, CircleHelp } from 'lucide-react'
 import { CheckerSheet } from '../components/Checker'
+import { NoProductSheet } from '../components/NoProduct'
+import { StoreInfo } from '../components/StoreInfo'
 import { ReceiptSheet } from '../components/ReceiptSheet'
 import { useStore, get, put, remove, byKind, toast } from '../lib/store'
 import { settings, shoppingNeed, todayKey, addDays, fmtQty, suggestBuy, packHint, addStock, setStock, fmtDay, diffDays } from '../lib/plan'
@@ -40,6 +42,7 @@ export default function Shop() {
   const [extra, setExtra] = useState('')
   const [rcpt, setRcpt] = useState(false)
   const [chk, setChk] = useState(false)
+  const [noId, setNoId] = useState(null)
   const from = diffDays(st.startDate, today) > 0 ? st.startDate : today
   const to = addDays(from, span)
   const { items, staples, ready } = shoppingNeed(from, to, st)
@@ -272,19 +275,20 @@ export default function Shop() {
 
       <ReceiptSheet open={rcpt} onClose={() => setRcpt(false)} />
       <CheckerSheet open={chk} onClose={() => setChk(false)} />
-      <BuySheet item={buy} onClose={() => setBuy(null)} onBuy={(q) => { markBought(buy.id, q); setBuy(null) }} />
+      <BuySheet item={buy} onClose={() => setBuy(null)} onBuy={(q) => { markBought(buy.id, q); setBuy(null) }} onNo={() => { const id = buy.id; setBuy(null); setTimeout(() => setNoId(id), 250) }} />
+      <NoProductSheet id={noId} onClose={() => setNoId(null)} />
     </div>
   )
 }
 
-function BuySheet({ item, onClose, onBuy }) {
+function BuySheet({ item, onClose, onBuy, onNo }) {
   return (
     <Sheet open={!!item} onClose={onClose} title={item ? ING[item.id].name : ''}>
-      {item && <BuyBody item={item} onBuy={onBuy} />}
+      {item && <BuyBody item={item} onBuy={onBuy} onNo={onNo} />}
     </Sheet>
   )
 }
-function BuyBody({ item, onBuy }) {
+function BuyBody({ item, onBuy, onNo }) {
   const ing = ING[item.id]
   const sug = suggestBuy(item.id, item.buy)
   const [q, setQ] = useState(sug)
@@ -309,6 +313,8 @@ function BuyBody({ item, onBuy }) {
         <Stepper value={q} step={step} onChange={setQ} fmt={(v) => fmtQty(item.id, v)} />
       </div>
       <button className="btn primary block" onClick={() => onBuy(q)} disabled={q <= 0}>Купила {fmtQty(item.id, q)}</button>
+      <button className="btn terra block" onClick={onNo}>Нет в магазине — заменить</button>
+      <StoreInfo id={item.id} />
     </div>
   )
 }

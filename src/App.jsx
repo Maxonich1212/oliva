@@ -13,6 +13,8 @@ import Welcome from './screens/Welcome'
 import { SettingsSheet } from './screens/Settings'
 import { Toast } from './components/ui'
 import { FeelPrompt } from './components/FeelPrompt'
+import { PrepSheet } from './components/PrepSheet'
+import { scheduleQueueSync, syncQueue } from './lib/push'
 
 const TABS = [
   ['today', 'Сегодня', Sun],
@@ -34,7 +36,8 @@ export default function App() {
   const ready = useStore((s) => s.ready)
   const user = useStore((s) => s.user)
   const offline = useStore((s) => s.offline)
-  useStore((s) => s.records.settings)
+  const records = useStore((s) => s.records)
+  const [prepOpen, setPrepOpen] = useState(false)
   const [tab, setTab] = useState('today')
   const [day, setDay] = useState(todayKey())
   const [setOpen, setSetOpen] = useState(false)
@@ -67,6 +70,40 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0 })
   }, [tab])
+
+  // очередь push-напоминаний пересчитывается после любых изменений и раз в 30 минут
+  useEffect(() => {
+    if (user) scheduleQueueSync()
+  }, [records, user])
+  useEffect(() => {
+    const t = setInterval(() => syncQueue(true), 30 * 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  // переходы из уведомлений: ?day=…, ?feel=день:приём, ?tab=…, ?prep=1
+  useEffect(() => {
+    const apply = (href) => {
+      const u = new URL(href, location.href)
+      const p = u.searchParams
+      if (p.get('day')) {
+        setDay(p.get('day'))
+        setTab('today')
+      }
+      if (p.get('tab')) setTab(p.get('tab'))
+      if (p.get('prep')) setPrepOpen(true)
+      if (p.get('feel')) {
+        const [k, slot] = p.get('feel').split(':')
+        setDay(k)
+        setTab('today')
+        setTimeout(() => window.dispatchEvent(new CustomEvent('oliva:feel', { detail: { k, slot } })), 600)
+      }
+      if ([...p.keys()].length) history.replaceState(null, '', location.pathname)
+    }
+    if (ready) apply(location.href)
+    const onMsg = (e) => e.data?.type === 'open' && apply(e.data.url)
+    navigator.serviceWorker?.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
+  }, [ready])
 
   if (!ready) return <div style={{ minHeight: '100dvh' }} />
   if (!user && !offline) return <Auth />
@@ -107,6 +144,7 @@ export default function App() {
       </nav>
       <SettingsSheet open={setOpen} onClose={() => setSetOpen(false)} theme={theme} setTheme={setThemeS} />
       <FeelPrompt />
+      <PrepSheet open={prepOpen} onClose={() => setPrepOpen(false)} />
       <Toast />
     </div>
   )

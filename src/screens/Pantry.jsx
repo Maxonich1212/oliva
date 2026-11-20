@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Search, PackageOpen, ClipboardList, ReceiptText } from 'lucide-react'
 import { ReceiptSheet } from '../components/ReceiptSheet'
+import { NoProductSheet } from '../components/NoProduct'
 import { useStore } from '../lib/store'
-import { settings, pantryList, fmtQty, setStock, stockOf, shoppingNeed, todayKey, addDays, diffDays } from '../lib/plan'
+import { settings, pantryList, fmtQty, setStock, stockOf, shoppingNeed, todayKey, addDays, diffDays, affectedBy } from '../lib/plan'
 import { ING, INGREDIENTS, DEPTS } from '../data/ingredients'
 import { Sheet, Stepper } from '../components/ui'
 
@@ -13,6 +14,7 @@ export default function Pantry() {
   const [add, setAdd] = useState(false)
   const [inv, setInv] = useState(false)
   const [rcpt, setRcpt] = useState(false)
+  const [noId, setNoId] = useState(null)
   const list = pantryList()
   const inStock = list.filter((p) => !ING[p.id]?.staple && p.qty > 0)
   const staples = INGREDIENTS.filter((i) => i.staple)
@@ -82,7 +84,8 @@ export default function Pantry() {
       </div>
       <div className="tiny muted" style={{ margin: '8px 6px' }}>Зелёное — есть дома. Нажми, если закончилось, — попадёт в список покупок.</div>
 
-      <EditSheet id={edit} onClose={() => setEdit(null)} />
+      <EditSheet id={edit} onClose={() => setEdit(null)} onOut={(id) => affectedBy(id).length && setTimeout(() => setNoId(id), 250)} />
+      <NoProductSheet id={noId} onClose={() => setNoId(null)} />
       <AddSheet open={add} onClose={() => setAdd(false)} onPick={(id) => { setAdd(false); setEdit(id) }} />
       <InventorySheet open={inv} onClose={() => setInv(false)} />
       <ReceiptSheet open={rcpt} onClose={() => setRcpt(false)} />
@@ -97,14 +100,14 @@ const stepOf = (id) => {
   return 50
 }
 
-function EditSheet({ id, onClose }) {
+function EditSheet({ id, onClose, onOut }) {
   return (
     <Sheet open={!!id} onClose={onClose} title={id ? ING[id].name : ''}>
-      {id && <EditBody id={id} onClose={onClose} />}
+      {id && <EditBody id={id} onClose={onClose} onOut={onOut} />}
     </Sheet>
   )
 }
-function EditBody({ id, onClose }) {
+function EditBody({ id, onClose, onOut }) {
   const [q, setQ] = useState(stockOf(id))
   const ing = ING[id]
   return (
@@ -120,7 +123,7 @@ function EditBody({ id, onClose }) {
         </div>
       )}
       <div className="row">
-        <button className="btn terra grow" onClick={() => { setStock(id, { qty: 0 }); onClose() }}>Закончилось</button>
+        <button className="btn terra grow" onClick={() => { setStock(id, { qty: 0 }); onClose(); onOut(id) }}>Закончилось</button>
         <button className="btn primary grow" onClick={() => { setStock(id, { qty: q }); onClose() }}>Сохранить</button>
       </div>
     </div>

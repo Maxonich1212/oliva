@@ -8,6 +8,7 @@ import { SLOT_NAME } from '../data/recipes'
 import { MealSheet, markEaten } from '../components/MealSheet'
 import { Macro } from '../components/ui'
 import { feelId, FEELS } from '../components/FeelPrompt'
+import { PrepSheet, usePrep } from '../components/PrepSheet'
 
 const cap = (s) => s[0].toUpperCase() + s.slice(1)
 const mondayOf = (k) => {
@@ -22,6 +23,8 @@ export default function Today({ day, setDay, openSettings, goShop }) {
   const sync = useStore((s) => s.sync)
   const user = useStore((s) => s.user)
   const [sel, setSel] = useState(null)
+  const [prepOpen, setPrepOpen] = useState(false)
+  const prepInfo = usePrep()
   const st = settings()
   const meals = dayMeals(day, st)
   const n = dayIndex(day, st)
@@ -60,7 +63,7 @@ export default function Today({ day, setDay, openSettings, goShop }) {
       <WeekStrip day={day} setDay={setDay} st={st} />
 
       {!meals ? (
-        <BeforeStart st={st} setDay={setDay} goShop={goShop} />
+        <BeforeStart st={st} setDay={setDay} goShop={goShop} onPrep={prepInfo.left.length ? () => setPrepOpen(true) : null} />
       ) : (
         <>
           <motion.div layout className="card" style={{ marginTop: 16 }}>
@@ -81,6 +84,17 @@ export default function Today({ day, setDay, openSettings, goShop }) {
             </div>
             <Macro nut={plan} />
           </motion.div>
+
+          {day === today && [0, 6].includes(parseKey(day).getDay()) && prepInfo.left.length > 0 && (
+            <motion.button whileTap={{ scale: 0.98 }} className="card row" style={{ marginTop: 14, gap: 12, width: '100%', textAlign: 'left', background: 'var(--honey-soft)', boxShadow: 'none' }} onClick={() => setPrepOpen(true)}>
+              <span style={{ fontSize: 26 }}>🧺</span>
+              <div className="grow">
+                <div className="h3">День заготовок</div>
+                <div className="tiny" style={{ color: 'var(--ink2)' }}>{prepInfo.left.length} задач · ≈ {prepInfo.minutes} мин — и будни станут проще</div>
+              </div>
+              <ChevronRight size={18} className="muted" />
+            </motion.button>
+          )}
 
           <div className="stack" style={{ marginTop: 14, gap: 10 }}>
             {meals.map((m) => (
@@ -112,6 +126,7 @@ export default function Today({ day, setDay, openSettings, goShop }) {
         </>
       )}
       <MealSheet sel={sel} onClose={() => setSel(null)} />
+      <PrepSheet open={prepOpen} onClose={() => setPrepOpen(false)} />
     </div>
   )
 }
@@ -203,7 +218,7 @@ function WeekStrip({ day, setDay, st }) {
   )
 }
 
-function BeforeStart({ st, setDay, goShop }) {
+function BeforeStart({ st, setDay, goShop, onPrep }) {
   return (
     <div className="card stack" style={{ marginTop: 16, gap: 14, padding: 20 }}>
       <div style={{ fontSize: 40 }}>🌱</div>
@@ -214,6 +229,9 @@ function BeforeStart({ st, setDay, goShop }) {
       <button className="btn primary" onClick={goShop}>
         <ShoppingBasket size={18} /> Список покупок на старт
       </button>
+      {onPrep && (
+        <button className="btn terra" onClick={onPrep}>🧺 Заготовки на первую неделю</button>
+      )}
       <button className="btn" onClick={() => setDay(st.startDate)}>Посмотреть первый день</button>
     </div>
   )

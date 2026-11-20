@@ -83,6 +83,7 @@ function View({ m, setMode, onClose, onCook }) {
             {m.slot === 'l' && r?.togo && <span className="tag honey"><Briefcase size={12} /> с собой</span>}
             {m.swapped && <span className="tag terra">замена</span>}
             {m.custom && <span className="tag terra">своя граммовка</span>}
+            {m.subs && Object.entries(m.subs).map(([a, b]) => <span key={a} className="tag honey">вместо «{ING[a].name.split(' ')[0].toLowerCase()}» — {ING[b].name.split(' ')[0].toLowerCase()}</span>)}
             {ready && <span className="tag honey"><ShoppingBag size={12} /> из магазина</span>}
           </div>
         </div>
@@ -130,7 +131,7 @@ function View({ m, setMode, onClose, onCook }) {
               </button>
             </div>
             <div className="list">
-              {Object.entries(m.amounts).map(([id, q]) => {
+              {Object.entries(m.amounts).filter(([id, q]) => q > 0 || ING[id].staple).map(([id, q]) => {
                 const ing = ING[id]
                 const need = q * cookMult
                 const have = ing.staple ? null : stockOf(id)

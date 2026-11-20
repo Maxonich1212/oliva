@@ -149,7 +149,7 @@ export function CookMode({ m, onClose, onDone }) {
                 <div>
                   <div className="eyebrow">Собери продукты{mult === 2 ? ' · на 2 порции' : ''}</div>
                   <div className="list" style={{ marginTop: 12 }}>
-                    {Object.entries(m.amounts).map(([id, q]) => (
+                    {Object.entries(m.amounts).filter(([id, q]) => q > 0 || ING[id].staple).map(([id, q]) => (
                       <button key={id} className="li" onClick={() => setGot({ ...got, [id]: !got[id] })}>
                         <CheckDot on={!!got[id]} />
                         <div className="grow" style={{ fontSize: 16, color: got[id] ? 'var(--muted)' : 'var(--ink)' }}>{ING[id].name}</div>
