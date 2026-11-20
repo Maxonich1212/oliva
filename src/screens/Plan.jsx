@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { BookOpen, Sprout, Leaf, ChevronRight, Search } from 'lucide-react'
+import { BookOpen, Sprout, Leaf, ChevronRight, Search, CircleHelp } from 'lucide-react'
+import { CheckerSheet } from '../components/Checker'
 import { useStore } from '../lib/store'
 import { settings, dayMeals, addDays, fmtDay, weekdayShort, todayKey, dayTotals, nutrition, baseAmounts, fmtQty, dayIndex } from '../lib/plan'
 import { PLAN_DAYS } from '../data/menu'
@@ -40,6 +41,15 @@ export default function Plan({ openDay }) {
           </div>
         </motion.button>
       </div>
+
+      <motion.button whileTap={{ scale: 0.98 }} className="card row" style={{ marginTop: 10, gap: 12, width: '100%', textAlign: 'left', padding: 14 }} onClick={() => setGuide('c')}>
+        <CircleHelp size={20} color="var(--euca)" />
+        <div className="grow">
+          <div className="h3">Можно ли?</div>
+          <div className="tiny muted">Проверить продукт: можно, в меру или пока нет</div>
+        </div>
+        <ChevronRight size={18} className="muted" />
+      </motion.button>
 
       <div className="chips" style={{ marginTop: 18 }}>
         {[0, 1, 2, 3].map((w) => (
@@ -97,6 +107,7 @@ export default function Plan({ openDay }) {
       </motion.button>
 
       <RecipeLibrary open={lib} onClose={() => setLib(false)} />
+      <CheckerSheet open={guide === 'c'} onClose={() => setGuide(null)} />
       <Sheet open={guide === 'r'} onClose={() => setGuide(null)} title="Второй этап">
         <Reintro />
       </Sheet>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Search, PackageOpen, ClipboardList } from 'lucide-react'
+import { Plus, Search, PackageOpen, ClipboardList, ReceiptText } from 'lucide-react'
+import { ReceiptSheet } from '../components/ReceiptSheet'
 import { useStore } from '../lib/store'
 import { settings, pantryList, fmtQty, setStock, stockOf, shoppingNeed, todayKey, addDays, diffDays } from '../lib/plan'
 import { ING, INGREDIENTS, DEPTS } from '../data/ingredients'
@@ -11,6 +12,7 @@ export default function Pantry() {
   const [edit, setEdit] = useState(null)
   const [add, setAdd] = useState(false)
   const [inv, setInv] = useState(false)
+  const [rcpt, setRcpt] = useState(false)
   const list = pantryList()
   const inStock = list.filter((p) => !ING[p.id]?.staple && p.qty > 0)
   const staples = INGREDIENTS.filter((i) => i.staple)
@@ -27,10 +29,17 @@ export default function Pantry() {
         <motion.button whileTap={{ scale: 0.97 }} className="btn primary grow" onClick={() => setInv(true)}>
           <ClipboardList size={18} /> Отметить, что есть
         </motion.button>
-        <motion.button whileTap={{ scale: 0.97 }} className="btn" onClick={() => setAdd(true)}>
-          <Plus size={18} /> Продукт
+        <motion.button whileTap={{ scale: 0.97 }} className="btn" onClick={() => setAdd(true)} aria-label="Добавить продукт">
+          <Plus size={18} />
         </motion.button>
       </div>
+      <motion.button whileTap={{ scale: 0.98 }} className="card row" style={{ marginTop: 12, gap: 12, width: '100%', textAlign: 'left' }} onClick={() => setRcpt(true)}>
+        <ReceiptText size={22} color="var(--terra)" />
+        <div className="grow">
+          <div className="h3">Добавить из чека</div>
+          <div className="tiny muted">Файл из «Проверки чеков» или текст электронного чека</div>
+        </div>
+      </motion.button>
 
       {groups.length === 0 && (
         <div className="card empty" style={{ marginTop: 16 }}>
@@ -76,6 +85,7 @@ export default function Pantry() {
       <EditSheet id={edit} onClose={() => setEdit(null)} />
       <AddSheet open={add} onClose={() => setAdd(false)} onPick={(id) => { setAdd(false); setEdit(id) }} />
       <InventorySheet open={inv} onClose={() => setInv(false)} />
+      <ReceiptSheet open={rcpt} onClose={() => setRcpt(false)} />
     </div>
   )
 }

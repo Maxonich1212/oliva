@@ -97,19 +97,26 @@ export function fmtQty(id, q, { short } = {}) {
 const mealId = (k, slot) => `meal:${k}:${slot}`
 export const mealRec = (k, slot) => get(mealId(k, slot)) || {}
 
+// Замены «во всём плане»: settings.replace = { было: стало }
+function mapPlan(p, st) {
+  const r = st.replace || {}
+  const f = (id) => r[id] || id
+  return { ...p, b: f(p.b), l: f(p.l), s: f(p.s), d: f(p.d) }
+}
+
 // Действующий рецепт ужина дня k (с учётом замены)
 function dinnerEff(k, st) {
   const n = dayIndex(k, st)
   if (n == null) return null
   const r = mealRec(k, 'd')
-  return r.recipe || planForDay(n % PLAN_DAYS).d
+  return r.recipe || mapPlan(planForDay(n % PLAN_DAYS), st).d
 }
 
 // Полное описание приёма пищи
 export function meal(k, slot, st = settings()) {
   const n = dayIndex(k, st)
   if (n == null) return null
-  const plan = planForDay(n % PLAN_DAYS)
+  const plan = mapPlan(planForDay(n % PLAN_DAYS), st)
   const rec = mealRec(k, slot)
   const times = isWeekend(k) ? st.times.we : st.times.wd
   let recipeId = rec.recipe || plan[slot]
@@ -230,6 +237,30 @@ export function swapMeal(m, recipeId) {
   const data = { ...prev, recipe: recipeId === m.planned && !m.leftover ? undefined : recipeId, amounts: undefined }
   put(mealId(m.k, m.slot), 'meal', data)
 }
+// Заменить блюдо во всех днях плана (не нравится / нет продукта)
+export function replaceEverywhere(fromId, toId) {
+  const st = settings()
+  const rep = { ...(st.replace || {}) }
+  for (const [k, v] of Object.entries(rep)) if (v === fromId) rep[k] = toId
+  if (fromId === toId) delete rep[fromId]
+  else rep[fromId] = toId
+  saveSettings({ replace: rep })
+}
+export const originalOf = (id) => {
+  const rep = settings().replace || {}
+  return Object.keys(rep).find((k) => rep[k] === id) || null
+}
+
+// Сколько продуктов для рецепта не хватает дома
+export function missingFor(rid, mult = 1) {
+  let miss = 0
+  for (const [id, q] of REC[rid]?.ing || []) {
+    if (!q || ING[id]?.staple) continue
+    if (stockOf(id) + 1e-6 < q * mult) miss++
+  }
+  return miss
+}
+
 export function setAmounts(m, amounts) {
   const base = m.recipe ? baseAmounts(m.recipeId) : {}
   const same = Object.keys(base).every((id) => Math.abs((amounts[id] ?? 0) - base[id]) < 1e-6)

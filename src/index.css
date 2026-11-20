@@ -600,3 +600,81 @@ textarea {
     transform: rotate(360deg);
   }
 }
+
+/* Отчёт для врача */
+.report {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg);
+  overflow-y: auto;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px 40px;
+}
+.report-bar {
+  max-width: 720px;
+  margin: 0 auto 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.report-page {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 20px;
+}
+.report-page .h3 {
+  margin: 18px 0 6px;
+}
+.report-page p {
+  margin: 4px 0;
+}
+.rtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 6px 0;
+}
+.rtable th,
+.rtable td {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 4px;
+  text-align: left;
+}
+.rtable th {
+  color: var(--muted);
+  font-weight: 700;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .report,
+  .report * {
+    visibility: visible;
+  }
+  .report {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    color: #000;
+    padding: 0;
+    overflow: visible;
+  }
+  .report-page {
+    box-shadow: none;
+    background: #fff;
+    padding: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+  details {
+    display: block;
+  }
+  details > * {
+    display: block;
+  }
+}

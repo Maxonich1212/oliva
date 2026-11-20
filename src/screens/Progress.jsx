@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Scale, FlaskConical, Plus, TrendingDown, TrendingUp } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
+import { Scale, FlaskConical, Plus, TrendingDown, TrendingUp, FileText } from 'lucide-react'
+import { Report } from '../components/Report'
 import { useStore, byKind, put, remove } from '../lib/store'
 import { settings, todayKey, addDays, dayMeals, fmtDay, diffDays, dayIndex, parseKey } from '../lib/plan'
 import { PLAN_DAYS } from '../data/menu'
@@ -23,6 +25,7 @@ export default function Progress() {
   const today = todayKey()
   const [wOpen, setWOpen] = useState(false)
   const [lOpen, setLOpen] = useState(false)
+  const [rep, setRep] = useState(false)
 
   const body = byKind('body').map((r) => ({ k: r.id.slice(5), ...r.data })).filter((b) => b.kg).sort((a, b) => (a.k < b.k ? -1 : 1))
   const startW = st.startWeight || body[0]?.kg || 0
@@ -185,6 +188,15 @@ export default function Progress() {
           </div>
         )}
       </div>
+
+      <motion.button whileTap={{ scale: 0.98 }} className="card row" style={{ marginTop: 12, gap: 12, width: '100%', textAlign: 'left' }} onClick={() => setRep(true)}>
+        <FileText size={20} color="var(--olive)" />
+        <div className="grow">
+          <div className="h3">Отчёт для врача</div>
+          <div className="tiny muted">Вес, самочувствие, подозрительные блюда, анализы — распечатать или PDF</div>
+        </div>
+      </motion.button>
+      <AnimatePresence>{rep && <Report onClose={() => setRep(false)} />}</AnimatePresence>
 
       <WeightSheet open={wOpen} onClose={() => setWOpen(false)} last={cur} />
       <LabSheet open={lOpen} onClose={() => setLOpen(false)} />

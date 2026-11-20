@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Settings, ChevronLeft, ChevronRight, Check, Moon, Briefcase, ShoppingBasket, CloudOff, Cloud, RefreshCw } from 'lucide-react'
-import { useStore, get } from '../lib/store'
+import { useStore, get, put } from '../lib/store'
 import { settings, dayMeals, dayTotals, dayIndex, fmtDay, weekday, addDays, todayKey, parseKey, keyOf, weekdayShort, prepFor, setStatus, cycleOf, diffDays } from '../lib/plan'
 import { PLAN_DAYS } from '../data/menu'
 import { SLOT_NAME } from '../data/recipes'
@@ -87,6 +87,8 @@ export default function Today({ day, setDay, openSettings, goShop }) {
               <MealCard key={m.slot} m={m} onOpen={() => setSel({ k: m.k, slot: m.slot })} />
             ))}
           </div>
+
+          <Water day={day} />
 
           {(prep.length > 0 || tDinner?.portions === 2 || tMeals?.[1]?.recipe?.togo) && day >= today && (
             <div className="card flat" style={{ marginTop: 14 }}>
@@ -213,6 +215,38 @@ function BeforeStart({ st, setDay, goShop }) {
         <ShoppingBasket size={18} /> Список покупок на старт
       </button>
       <button className="btn" onClick={() => setDay(st.startDate)}>Посмотреть первый день</button>
+    </div>
+  )
+}
+
+// Вода: 8 стаканов по 250 мл — помогает при отёках и запорах
+function Water({ day }) {
+  const n = get('water:' + day)?.n || 0
+  const set = (v) => put('water:' + day, 'water', { n: Math.max(0, Math.min(12, v)) })
+  return (
+    <div className="card" style={{ marginTop: 14, padding: 14 }}>
+      <div className="row between">
+        <div>
+          <div className="h3">Вода</div>
+          <div className="tiny muted num">{String(n * 0.25).replace('.', ',')} из 2 л</div>
+        </div>
+        <button className="btn ghost sm" onClick={() => set(n - 1)} disabled={!n}>−1</button>
+      </div>
+      <div className="row" style={{ gap: 6, marginTop: 10 }}>
+        {Array.from({ length: 8 }, (_, i) => (
+          <motion.button
+            key={i}
+            whileTap={{ scale: 0.8 }}
+            onClick={() => set(i < n ? i : i + 1)}
+            aria-label={`Стакан ${i + 1}`}
+            style={{ flex: 1, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', background: i < n ? 'var(--euca-soft)' : 'var(--card2)', boxShadow: i < n ? 'none' : 'inset 0 0 0 1px var(--line)' }}
+          >
+            <motion.svg width="14" height="18" viewBox="0 0 14 18" initial={false} animate={{ scale: i < n ? 1 : 0.85, opacity: i < n ? 1 : 0.35 }}>
+              <path d="M7 1 C7 1 1 8 1 11.5 A6 6 0 0 0 13 11.5 C13 8 7 1 7 1 Z" fill={i < n ? 'var(--euca)' : 'var(--muted)'} />
+            </motion.svg>
+          </motion.button>
+        ))}
+      </div>
     </div>
   )
 }

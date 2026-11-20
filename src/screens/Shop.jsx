@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Share2, ChevronDown, RotateCcw, ShoppingBag, X } from 'lucide-react'
+import { Plus, Share2, ChevronDown, RotateCcw, ShoppingBag, X, ReceiptText, CircleHelp } from 'lucide-react'
+import { CheckerSheet } from '../components/Checker'
+import { ReceiptSheet } from '../components/ReceiptSheet'
 import { useStore, get, put, remove, byKind, toast } from '../lib/store'
 import { settings, shoppingNeed, todayKey, addDays, fmtQty, suggestBuy, packHint, addStock, setStock, fmtDay, diffDays } from '../lib/plan'
 import { ING, DEPTS } from '../data/ingredients'
@@ -36,6 +38,8 @@ export default function Shop() {
   const [buy, setBuy] = useState(null)
   const [showEnough, setShowEnough] = useState(false)
   const [extra, setExtra] = useState('')
+  const [rcpt, setRcpt] = useState(false)
+  const [chk, setChk] = useState(false)
   const from = diffDays(st.startDate, today) > 0 ? st.startDate : today
   const to = addDays(from, span)
   const { items, staples, ready } = shoppingNeed(from, to, st)
@@ -90,9 +94,17 @@ export default function Shop() {
     <div>
       <div className="row between" style={{ marginTop: 10 }}>
         <div className="eyebrow">{fmtDay(from)}{span ? ` – ${fmtDay(to)}` : ''}</div>
-        <button className="icon-btn" onClick={share} aria-label="Поделиться списком">
-          <Share2 size={18} />
-        </button>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="icon-btn" onClick={() => setChk(true)} aria-label="Можно ли?">
+            <CircleHelp size={18} />
+          </button>
+          <button className="icon-btn" onClick={() => setRcpt(true)} aria-label="Добавить из чека">
+            <ReceiptText size={18} />
+          </button>
+          <button className="icon-btn" onClick={share} aria-label="Поделиться списком">
+            <Share2 size={18} />
+          </button>
+        </div>
       </div>
       <h1 className="h1" style={{ marginTop: 6 }}>Покупки</h1>
       <div className="small muted" style={{ marginTop: 6 }}>
@@ -258,6 +270,8 @@ export default function Shop() {
         </>
       )}
 
+      <ReceiptSheet open={rcpt} onClose={() => setRcpt(false)} />
+      <CheckerSheet open={chk} onClose={() => setChk(false)} />
       <BuySheet item={buy} onClose={() => setBuy(null)} onBuy={(q) => { markBought(buy.id, q); setBuy(null) }} />
     </div>
   )

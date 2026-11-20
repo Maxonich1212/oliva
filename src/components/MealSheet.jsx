@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Repeat2, Check, X, SlidersHorizontal, RotateCcw, Briefcase, Snowflake, Info, ShoppingBag, ChevronLeft } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
+import { Clock, Repeat2, Check, X, SlidersHorizontal, RotateCcw, Briefcase, Snowflake, Info, ShoppingBag, ChevronLeft, ChefHat } from 'lucide-react'
+import { CookMode } from './CookMode'
 import { Sheet, Stepper, Macro } from './ui'
 import { ING } from '../data/ingredients'
 import { RECIPES, REC, SLOT_NAME } from '../data/recipes'
 import { READY, LABEL_TIPS } from '../data/ready'
-import { meal, setStatus, swapMeal, setAmounts, fmtQty, nutrition, stockOf, settings, fmtDay, weekday, addDays, baseAmounts } from '../lib/plan'
+import { meal, replaceEverywhere, originalOf, missingFor, setStatus, swapMeal, setAmounts, fmtQty, nutrition, stockOf, settings, fmtDay, weekday, addDays, baseAmounts } from '../lib/plan'
 import { toast, useStore } from '../lib/store'
 
 export const askFeel = (m) => {
@@ -31,16 +33,32 @@ export function MealSheet({ sel, onClose }) {
   useEffect(() => {
     document.querySelector('.sheet-body')?.scrollTo({ top: 0 })
   }, [mode])
+  const [cook, setCook] = useState(false)
   return (
+    <>
     <Sheet open={open} onClose={() => { setMode('view'); onClose() }}>
-      {m && mode === 'view' && <View m={m} setMode={setMode} onClose={onClose} />}
+      {m && mode === 'view' && <View m={m} setMode={setMode} onClose={onClose} onCook={() => setCook(true)} />}
       {m && mode === 'edit' && <Edit m={m} back={() => setMode('view')} />}
       {m && mode === 'swap' && <Swap m={m} back={() => setMode('view')} />}
     </Sheet>
+    <AnimatePresence>
+      {cook && m?.recipe && (
+        <CookMode
+          m={m}
+          onClose={() => setCook(false)}
+          onDone={() => {
+            setCook(false)
+            if (m.status !== 'eaten') markEaten(m)
+            onClose()
+          }}
+        />
+      )}
+    </AnimatePresence>
+    </>
   )
 }
 
-function View({ m, setMode, onClose }) {
+function View({ m, setMode, onClose, onCook }) {
   const r = m.recipe
   const ready = m.ready
   const cookMult = m.slot === 'd' ? m.portions : 1
@@ -170,6 +188,11 @@ function View({ m, setMode, onClose }) {
       )}
 
       <div className="stack" style={{ gap: 10, marginTop: 4 }}>
+        {r && !m.leftover && m.status !== 'eaten' && (
+          <button className="btn terra block" onClick={onCook}>
+            <ChefHat size={18} /> Готовить пошагово
+          </button>
+        )}
         {m.status !== 'eaten' ? (
           <button className="btn primary block" onClick={() => { markEaten(m); onClose() }}>
             <Check size={18} /> Съела
@@ -239,15 +262,25 @@ function Edit({ m, back }) {
 }
 
 function Swap({ m, back }) {
+  const [byStock, setByStock] = useState(false)
+  const [everywhere, setEverywhere] = useState(false)
+  const mult = m.slot === 'd' ? m.portions : 1
   const list = useMemo(() => {
     const target = m.nut.k
     const recs = RECIPES.filter((r) => r.slot.includes(m.slot) && r.id !== m.recipeId)
-      .map((r) => ({ r, nut: nutrition(baseAmounts(r.id)) }))
-      .sort((a, b) => Math.abs(a.nut.k - target) - Math.abs(b.nut.k - target))
+      .map((r) => ({ r, nut: nutrition(baseAmounts(r.id)), miss: missingFor(r.id, mult) }))
+      .sort((a, b) => (byStock ? a.miss - b.miss : 0) || Math.abs(a.nut.k - target) - Math.abs(b.nut.k - target))
     return recs
-  }, [m])
+  }, [m, byStock, mult])
+  const baseId = m.leftover ? null : m.swapped ? null : m.recipeId
   const ready = READY.filter((r) => r.slot.includes(m.slot))
   const pick = (id) => {
+    if (everywhere && baseId && !id.startsWith('r_')) {
+      replaceEverywhere(originalOf(baseId) || baseId, id)
+      toast('Заменила во всех днях плана')
+      back()
+      return
+    }
     swapMeal(m, id)
     toast(m.slot === 'd' && m.portions === 2 && !REC[id]?.batch ? 'Заменила. Завтрашний обед приготовишь отдельно' : 'Блюдо заменено')
     back()
@@ -264,14 +297,25 @@ function Swap({ m, back }) {
         </button>
       )}
       {m.slot === 'd' && m.portions === 2 && <div className="small muted">Завтрашний обед поменяется вместе с ужином — это его вторая порция.</div>}
+      {baseId && originalOf(baseId) && (
+        <button className="btn block" onClick={() => { replaceEverywhere(originalOf(baseId), originalOf(baseId)); toast('Вернула исходное блюдо в план'); back() }}>
+          <RotateCcw size={16} /> Вернуть во всём плане: {REC[originalOf(baseId)]?.name}
+        </button>
+      )}
+      <div className="chips">
+        <button className={'chip' + (byStock ? ' on' : '')} onClick={() => setByStock(!byStock)}>🏡 Из того, что есть дома</button>
+        {baseId && <button className={'chip' + (everywhere ? ' on' : '')} onClick={() => setEverywhere(!everywhere)}>Заменить во всём плане</button>}
+      </div>
+      {everywhere && <div className="small muted">«{m.recipe?.name}» больше не появится в меню — везде будет выбранное блюдо.</div>}
       <div className="eyebrow" style={{ margin: '6px 4px 0' }}>Приготовить другое</div>
       <div className="list">
-        {list.map(({ r, nut }) => (
+        {list.map(({ r, nut, miss }) => (
           <motion.button whileTap={{ scale: 0.98 }} className="li" key={r.id} onClick={() => pick(r.id)}>
             <div className={'dish ' + m.slot} style={{ width: 44, height: 44, fontSize: 23, borderRadius: 15 }}>{r.emoji}</div>
             <div className="grow">
               <div style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</div>
               <div className="tiny muted">{Math.round(nut.k)} ккал · Б {Math.round(nut.p)} · {r.time} мин{r.batch && m.slot === 'd' ? ' · на 2 дня' : ''}</div>
+              <div className="tiny" style={{ fontWeight: 700, color: miss ? 'var(--terra)' : 'var(--olive)' }}>{miss ? `не хватает: ${miss}` : 'всё есть дома'}</div>
             </div>
           </motion.button>
         ))}
