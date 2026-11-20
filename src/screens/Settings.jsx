@@ -28,6 +28,7 @@ function Body({ theme, setTheme }) {
 
   return (
     <div className="stack" style={{ gap: 18 }}>
+      <InstallGroup />
       <PushGroup user={user} st={st} />
 
       <Group title="Напоминания в календаре">
@@ -110,6 +111,32 @@ function Body({ theme, setTheme }) {
       </Group>
       <div className="tiny muted" style={{ textAlign: 'center' }}>Олива · старт {fmtDay(st.startDate)} · версия {__APP_VERSION__}</div>
     </div>
+  )
+}
+
+function InstallGroup() {
+  const [, force] = useState(0)
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone
+  if (standalone) return null
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const prompt = window.__installPrompt
+  return (
+    <Group title="Установить на телефон">
+      <div className="row" style={{ gap: 12 }}>
+        <img src="./icon-180.png" alt="" width="52" height="52" style={{ borderRadius: 12, flex: 'none' }} />
+        <div className="small" style={{ color: 'var(--ink2)' }}>
+          {ios
+            ? 'Safari → кнопка «Поделиться» (квадрат со стрелкой) → «На экран Домой» → «Добавить». Олива откроется как приложение — без адресной строки, с иконкой и уведомлениями.'
+            : 'Добавь Оливу на главный экран — откроется как отдельное приложение, без адресной строки.'}
+        </div>
+      </div>
+      {!ios && prompt && (
+        <button className="btn primary block" onClick={async () => { prompt.prompt(); await prompt.userChoice; window.__installPrompt = null; force((x) => x + 1) }}>
+          Установить
+        </button>
+      )}
+      {!ios && !prompt && <div className="tiny muted">Chrome: меню ⋮ → «Добавить на главный экран».</div>}
+    </Group>
   )
 }
 

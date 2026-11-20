@@ -1,7 +1,7 @@
 // Офлайн-кэш: сеть в приоритете для страницы, кэш — для статики. Версия меняется при каждой сборке.
 const CACHE = 'oliva-__BUILD__'
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon-192.png'])))
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'])))
   self.skipWaiting()
 })
 self.addEventListener('activate', (e) => {
