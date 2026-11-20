@@ -10,6 +10,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url)
   if (e.request.method !== 'GET' || u.origin !== location.origin) return
+  // файл версии — всегда из сети, иначе обновление не заметить
+  if (u.pathname.endsWith('/version.json')) return
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).then((r) => { const c = r.clone(); caches.open(CACHE).then((x) => x.put('./index.html', c)); return r }).catch(() => caches.match('./index.html')))
     return
@@ -54,4 +56,9 @@ self.addEventListener('notificationclick', (e) => {
       return self.clients.openWindow(url)
     }),
   )
+})
+
+// приложение просит включить новую версию сразу
+self.addEventListener('message', (e) => {
+  if (e.data?.type === 'skip-waiting') self.skipWaiting()
 })

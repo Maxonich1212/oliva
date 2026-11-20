@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Bell, BellOff } from 'lucide-react'
+import { Bell, BellOff, Download } from 'lucide-react'
+import { useUpdate, checkUpdate, applyUpdate } from '../lib/update'
 import { PUSH_TYPES, pushPrefs, pushSupport, enablePush, disablePush, testPush } from '../lib/push'
 import { CalendarPlus, LogOut, RefreshCw, Cloud } from 'lucide-react'
 import { useStore, signOut, syncNow, leaveOffline } from '../lib/store'
@@ -109,8 +110,30 @@ function Body({ theme, setTheme }) {
           </>
         )}
       </Group>
-      <div className="tiny muted" style={{ textAlign: 'center' }}>Олива · старт {fmtDay(st.startDate)} · версия {__APP_VERSION__}</div>
+      <UpdateGroup />
+      <div className="tiny muted" style={{ textAlign: 'center' }}>Олива · старт {fmtDay(st.startDate)}</div>
     </div>
+  )
+}
+
+function UpdateGroup() {
+  const { available, checking } = useUpdate()
+  const [checked, setChecked] = useState(false)
+  return (
+    <Group title="Обновления">
+      <div className="row between">
+        <div>
+          <div className="small" style={{ fontWeight: 700 }}>{available ? 'Есть новая версия' : checked ? 'У тебя последняя версия' : 'Версия приложения'}</div>
+          <div className="tiny muted">{__APP_VERSION__}</div>
+        </div>
+        {available ? (
+          <button className="btn sm primary" onClick={applyUpdate}><Download size={15} /> Обновить</button>
+        ) : (
+          <button className="btn sm" disabled={checking} onClick={async () => { await checkUpdate(); setChecked(true) }}>{checking ? 'Проверяю…' : 'Проверить'}</button>
+        )}
+      </div>
+      <div className="tiny muted">Приложение само проверяет обновления при каждом открытии — переустанавливать иконку не нужно.</div>
+    </Group>
   )
 }
 

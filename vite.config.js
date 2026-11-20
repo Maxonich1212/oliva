@@ -11,6 +11,8 @@ const stampSw = {
   closeBundle() {
     const f = 'dist/sw.js'
     if (existsSync(f)) writeFileSync(f, readFileSync(f, 'utf8').replaceAll('__BUILD__', VERSION))
+    // по этому файлу приложение понимает, что вышла новая версия
+    writeFileSync('dist/version.json', JSON.stringify({ v: VERSION }))
   },
 }
 

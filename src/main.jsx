@@ -2,7 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
+import { UpdateBanner } from './components/UpdateBanner'
 import { initAuth } from './lib/store'
+import { startUpdateChecks } from './lib/update'
 
 initAuth()
 // Android/Chrome: запоминаем предложение установки, чтобы показать свою кнопку в настройках
@@ -13,18 +15,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
+    <UpdateBanner />
   </StrictMode>,
 )
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  const hadController = !!navigator.serviceWorker.controller
   navigator.serviceWorker.register('./sw.js').catch(() => {})
-  // вышла новая версия — тихо перезагружаемся, но только если приложение было уже открыто старой версией
-  let reloaded = false
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (hadController && !reloaded) {
-      reloaded = true
-      location.reload()
-    }
-  })
+}
+startUpdateChecks()
+// Android (приложение с экрана «Домой») умеет фиксировать вертикальную ориентацию
+try {
+  screen.orientation?.lock?.('portrait').catch(() => {})
+} catch {
+  /* iPhone не поддерживает — там заставка из index.html */
 }

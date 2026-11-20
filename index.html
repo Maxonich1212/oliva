@@ -32,6 +32,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- iPhone не даёт веб-приложениям запретить поворот, поэтому в горизонтальном положении показываем заставку -->
+    <div class="rotate-lock" aria-hidden="true">
+      <div class="rotate-phone"></div>
+      <div class="rotate-text">Олива работает вертикально</div>
+      <div class="rotate-sub">Поверни телефон обратно</div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
